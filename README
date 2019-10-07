@@ -11,3 +11,6 @@ docs/README
 fuzzone函数中calculate_score函数得到pref_score作为seed的得分，根据pref_score得分进入common_fuzz_stuff函数（
 -》save_if_interesting->...->updata_bitmap_score函数）,updata_bitmap_score函数对新路径，对合适的种子进行标记为favorite
 在fuzzone函数中，不合适的种子进入abandon_entry,从而不会被fuzz。
+
+#calculate_score()
+afl根据case的执行速度/bitmap的大小/case产生时间/路径深度等因素给case进行打分,返回值为一个分数，用来调整在havoc阶段的用时。使得执行时间短，代码覆盖高，新发现的，路径深度深的case拥有更多havoc变异的机会。此段代码没有较强逻辑，在这里就简单介绍。
