@@ -2669,7 +2669,7 @@ static u8 calibrate_case(char** argv, struct queue_entry* q, u8* use_mem,
 
 abort_calibration:
 
-  if (new_bits == 2 && (q->num_new_cov == 1)) {
+  if (new_bits == 2 && (q->num_new_cov <= 1)) {
     q->num_new_cov ++;
     queued_with_cov++;
   }
