@@ -1249,9 +1249,10 @@ static void minimize_bits(u8* dst, u8* src) {
 static void update_bitmap_score(struct queue_entry* q) {
 
   u32 i;
-  u32 fuzz_level = q->fuzz_level;
+  u32 fuzz_level   = q->fuzz_level;
   u64 fuzz_p2      = next_p2 (q->n_fuzz);
-  u64 fav_factor = q->exec_us * q->len;
+  u64 num_new_cov  = q->num_new_cov;
+  u64 fav_factor   = q->exec_us * q->len;
 
   /* For every byte set in trace_bits[], see if there is a previous winner,
      and how it compares to us. */
@@ -1264,18 +1265,20 @@ static void update_bitmap_score(struct queue_entry* q) {
 
          u32 top_rated_fuzz_level = top_rated[i]->fuzz_level;
          u64 top_rated_fuzz_p2    = next_p2 (top_rated[i]->n_fuzz);
+         u64 top_num_new_cov      = top_rated[i]->num_new_cov;
          u64 top_rated_fav_factor = top_rated[i]->exec_us * top_rated[i]->len;
 
          if(fuzz_level > top_rated_fuzz_level) continue;
          else if (fuzz_level == top_rated_fuzz_level){
           if(fuzz_p2 > top_rated_fuzz_p2) continue;
           else if (fuzz_p2 == top_rated_fuzz_p2) {
-            if (fav_factor > top_rated_fav_factor) continue;
+          	if (num_new_cov < top_num_new_cov) continue;
+          	else if(num_new_cov == top_num_new_cov){
+          		if (fav_factor > top_rated_fav_factor) continue;
+          	}
           }
+            
         }
-
-         /* Looks like we're going to win. Decrease ref count for the
-            previous winner, discard its trace_bits[] if necessary. */
 
          if (!--top_rated[i]->tc_ref) {
            ck_free(top_rated[i]->trace_mini);
@@ -1283,8 +1286,6 @@ static void update_bitmap_score(struct queue_entry* q) {
          }
 
        }
-
-       /* Insert ourselves as the new winner. */
 
        top_rated[i] = q;
        q->tc_ref++;
@@ -4022,7 +4023,7 @@ static void show_stats(void) {
 
   sprintf(tmp + banner_pad, "%s " cLCY VERSION cLGN
           " (%s)",  crash_mode ? cPIN "peruvian were-rabbit" : 
-          cYEL "american fuzzy lop (afl-slow 1.2)", use_banner);
+          cYEL "american fuzzy lop (afl-slow 1.4 serch&power)", use_banner);
 
   SAYF("\n%s\n\n", tmp);
 
@@ -4767,62 +4768,14 @@ static u32 calculate_score(struct queue_entry* q) {
   }
 
   u64 fuzz = q->n_fuzz;
-  u64 fuzz_total;
-
-  u32 n_paths, fuzz_mu;
   u32 factor = 1;
 
-  switch (schedule) {
+  if (q->fuzz_level < 16) {
+    factor = ((u32) (1 << q->fuzz_level)) / (fuzz == 0 ? 1 : fuzz); 
+  } else
+    factor = MAX_FACTOR / (fuzz == 0 ? 1 : next_p2 (fuzz));
 
-    case EXPLORE: 
-      break;
-
-    case EXPLOIT:
-      factor = MAX_FACTOR;
-      break;
-
-    case COE:
-      fuzz_total = 0;
-      n_paths = 0;
-
-      struct queue_entry *queue_it = queue;	
-      while (queue_it) {
-        fuzz_total += queue_it->n_fuzz;
-        n_paths ++;
-        queue_it = queue_it->next;
-      }
-
-      fuzz_mu = fuzz_total / n_paths;
-      if (fuzz <= fuzz_mu) {
-        if (q->fuzz_level < 16)
-          factor = ((u32) (1 << q->fuzz_level));
-        else 
-          factor = MAX_FACTOR;
-      } else {
-        factor = 0;
-      }
-      break;
-    
-    case FAST:
-      if (q->fuzz_level < 16) {
-         factor = ((u32) (1 << q->fuzz_level)) / (fuzz == 0 ? 1 : fuzz); 
-      } else
-        factor = MAX_FACTOR / (fuzz == 0 ? 1 : next_p2 (fuzz));
-      break;
-
-    case LIN:
-      factor = q->fuzz_level / (fuzz == 0 ? 1 : fuzz); 
-      break;
-
-    case QUAD:
-      factor = q->fuzz_level * q->fuzz_level / (fuzz == 0 ? 1 : fuzz);
-      break;
-
-    default:
-      PFATAL ("Unkown Power Schedule");
-  }
-
-  perf_score *= (factor * q->num_new_cov )/ POWER_BETA;
+  perf_score *= (factor*q->num_new_cov)/ POWER_BETA;
 
   if (factor > MAX_FACTOR) 
     factor = MAX_FACTOR;
