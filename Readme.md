@@ -18,6 +18,6 @@
 - 当队列中的所有文件都经过变异测试了，则完成一次”cycle done”。整个队列又会从第一个文件开始，再次继续进行变异
 
 
-# fuzzone函数
+### fuzzone函数
 fuzzone函数中calculate_score函数得到pref_score作为seed的得分，根据pref_score得分进入common_fuzz_stuff函数（
 -》save_if_interesting->...->updata_bitmap_score函数）,updata_bitmap_score函数对新路径，对合适的种子进行标记为favorite
