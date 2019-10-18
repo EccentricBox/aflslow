@@ -1,11 +1,3 @@
-## 下一个种子输入策略：
-1. 优先考虑s(i)最小的路径i的输入
-2. 优先考虑f(i)最小的路径i的输入
-其中s(i)是路径i的模糊次数，f(i)是能量，在fuzz.c文件的update_bitmap_score函数中修改
-
-## 能量分配：
-在fuzz.c文件的calculate_score函数中修改
-
 ## 主流程
 1. afl_fuzz的main函数会解析用户输入命令，检查环境变量的设置、输入输出路径、目标文件。程序定义了结构体queue_entry链表维护fuzz中使用的文件。
 2. 函数perform_dry_run() 会使用初始的测试用例进行测试，确保目标程序能够正常执行,生成初始化的queue和bitmap。
